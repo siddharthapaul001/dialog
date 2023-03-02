@@ -52,7 +52,7 @@ func (d filedlg) Filename() string {
 }
 
 func (b *FileBuilder) load() (string, error) {
-	d := openfile(w32.OFN_FILEMUSTEXIST, b)
+	d := openfile(w32.OFN_FILEMUSTEXIST|w32.OFN_NOCHANGEDIR, b)
 	if w32.GetOpenFileName(d.opf) {
 		return d.Filename(), nil
 	}
@@ -60,7 +60,7 @@ func (b *FileBuilder) load() (string, error) {
 }
 
 func (b *FileBuilder) save() (string, error) {
-	d := openfile(w32.OFN_OVERWRITEPROMPT, b)
+	d := openfile(w32.OFN_OVERWRITEPROMPT|w32.OFN_NOCHANGEDIR, b)
 	if w32.GetSaveFileName(d.opf) {
 		return d.Filename(), nil
 	}
@@ -90,6 +90,12 @@ func utf16slice(ptr *uint16) []uint16 {
 
 func openfile(flags uint32, b *FileBuilder) (d filedlg) {
 	d.buf = make([]uint16, w32.MAX_PATH)
+	if b.StartFile != "" {
+		initialName, _ := syscall.UTF16FromString(b.StartFile)
+		for i := 0; i < len(initialName) && i < w32.MAX_PATH; i++ {
+			d.buf[i] = initialName[i]
+		}
+	}
 	d.opf = &w32.OPENFILENAME{
 		File:    utf16ptr(d.buf),
 		MaxFile: uint32(len(d.buf)),

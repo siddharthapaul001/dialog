@@ -1,6 +1,8 @@
 package dialog
 
 // #cgo pkg-config: gtk+-3.0
+// #cgo LDFLAGS: -lX11
+// #include <X11/Xlib.h>
 // #include <gtk/gtk.h>
 // #include <stdlib.h>
 // static GtkWidget* msgdlg(GtkWindow *parent, GtkDialogFlags flags, GtkMessageType type, GtkButtonsType buttons, char *msg) {
@@ -12,8 +14,17 @@ package dialog
 import "C"
 import "unsafe"
 
+var initSuccess bool
+
 func init() {
-	C.gtk_init(nil, nil)
+	C.XInitThreads()
+	initSuccess = (C.gtk_init_check(nil, nil) == C.TRUE)
+}
+
+func checkStatus() {
+	if !initSuccess {
+		panic("gtk initialisation failed; presumably no X server is available")
+	}
 }
 
 func closeDialog(dlg *C.GtkWidget) {
@@ -29,6 +40,7 @@ func closeDialog(dlg *C.GtkWidget) {
 }
 
 func runMsgDlg(defaultTitle string, flags C.GtkDialogFlags, msgtype C.GtkMessageType, buttons C.GtkButtonsType, b *MsgBuilder) C.gint {
+	checkStatus()
 	cmsg := C.CString(b.Msg)
 	defer C.free(unsafe.Pointer(cmsg))
 	dlg := C.msgdlg(nil, flags, msgtype, buttons, cmsg)
@@ -64,6 +76,7 @@ func (b *FileBuilder) save() (string, error) {
 }
 
 func chooseFile(title string, buttonText string, action C.GtkFileChooserAction, b *FileBuilder) (string, error) {
+	checkStatus()
 	ctitle := C.CString(title)
 	defer C.free(unsafe.Pointer(ctitle))
 	cbuttonText := C.CString(buttonText)
@@ -88,6 +101,11 @@ func chooseFile(title string, buttonText string, action C.GtkFileChooserAction, 
 		cdir := C.CString(b.StartDir)
 		defer C.free(unsafe.Pointer(cdir))
 		C.gtk_file_chooser_set_current_folder(fdlg, cdir)
+	}
+	if b.StartFile != "" {
+		cfile := C.CString(b.StartFile)
+		defer C.free(unsafe.Pointer(cfile))
+		C.gtk_file_chooser_set_current_name(fdlg, cfile)
 	}
 	C.gtk_file_chooser_set_do_overwrite_confirmation(fdlg, C.TRUE)
 	r := C.gtk_dialog_run((*C.GtkDialog)(unsafe.Pointer(dlg)))
