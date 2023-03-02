@@ -8,7 +8,7 @@ import (
 
 	"github.com/skelterjohn/go.wde" // nolint: goimports
 	_ "github.com/skelterjohn/go.wde/init"
-	"github.com/sqweek/dialog"
+	"github.com/siddharthapaul001/dialog"
 )
 
 var loadR, saveR image.Rectangle
